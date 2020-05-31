@@ -1,3 +1,4 @@
+import java.io.*
 import kotlin.math.log2
 import kotlin.math.roundToInt
 
@@ -11,11 +12,12 @@ operator fun <T, R, V> ((T) -> R).rangeTo(other: (R) -> V): ((T) -> V) {
     }
 }
 
+var highScore: Int = 0
+
 fun Int.binaryLog() = log2(this.toDouble()).roundToInt()
 
 //cycle colors based on binary log modulo no. colours
 fun colours(x: Int): String = when ((x.binaryLog()-1)%12) {
-
     0    -> "\u001B[31m" //
     1    -> "\u001B[31;1m"
     2    -> "\u001B[32m"
@@ -33,16 +35,39 @@ fun colours(x: Int): String = when ((x.binaryLog()-1)%12) {
 const val ANSI_RESET = "\u001B[0m"
 //</editor-fold>
 
+//get highscore global from file
+// - creates file if not present
+fun getHighScore() {
+    try {
+        val r = BufferedReader(FileReader("highscore"))
+        highScore = r.use { Integer.parseInt(r.readLine()!!) }
+    } catch (e: FileNotFoundException) {
+        val w = BufferedWriter(FileWriter("highscore"))
+        w.use{w.write(highScore.toString())}
+    }
+}
+
+//initialise an empty game grid
+fun emptyGrid(): Grid = Array(4){IntArray(4){0} }
+
+//set up initial gamestate, begin gameloop
 fun main() {
-    //setup
+    getHighScore()
     (::addRandomTile..::addRandomTile..::run2048) (emptyGrid())
 }
 
+//print, read, update grid, loop
 fun run2048(grid: Grid) {
 
-    printgrid(grid)
+    val score = grid.map { it.sum() }.sum()
+    grid.print(score=score)
+
     if (grid.gameOver()) {
         println("you're bad")
+        if (score > highScore) {
+            val w = BufferedWriter(FileWriter("highscore"))
+            w.use{w.write(score.toString())}
+        }
         return
     }
 
@@ -50,7 +75,7 @@ fun run2048(grid: Grid) {
     val move = getMove()
     val oldGrid = grid.map { it.copyOf() }.toTypedArray()
     //make the move
-    var newGrid = updategrid(grid, move)
+    val newGrid = grid.update(move)
 
     val noChange = oldGrid contentDeepEquals newGrid
     try {
@@ -64,9 +89,6 @@ fun run2048(grid: Grid) {
     }
 
 }
-
-//initialise an empty game grid
-fun emptyGrid(): Grid = Array(4){IntArray(4){0} }
 
 //<editor-fold desc="Game over checks">
 fun Grid.gameOver(): Boolean {
@@ -114,34 +136,34 @@ fun getMove():String {
 //</editor-fold>
 
 //Make move (merge same, squash in dir of move)
-fun updategrid(grid:Array<IntArray>, move: String): Grid =
+fun Grid.update(move: String): Grid =
     when (move) {
-        "w" -> updateRowsUp(grid)
-        "a" -> updateRowsLeft(grid)
-        "s" -> updateRowsDown(grid)
-        "d" -> updateRowsRight(grid)
+        "w" -> updateRowsUp(this)
+        "a" -> updateRowsLeft(this)
+        "s" -> updateRowsDown(this)
+        "d" -> updateRowsRight(this)
         else -> throw IllegalArgumentException("Expected move of w a s or d")
     }
 
 //Print gamestate
-fun printgrid(grid: Array<IntArray>) {
+fun Grid.print(score: Int) {
     //clear screen
     print("\u001b[H\u001b[2J")
-    //draw score
-    println("Score: ${grid.map { it.sum() }.sum()}")
+    //draw scores
+    println("Score: $score")
+    println("High-score: $highScore")
     //draw board
     println("+----+----+----+----+")
-    grid.forEach { row ->
+    this.forEach { row ->
         print("|")
         row.forEach {
-            val num = "${colours(it)}${(if (it == 0) "" else it).toString().padStart(4)}${ANSI_RESET}"
+            val num = "${colours(it)}${(if (it == 0) "" else it.toString()).padStart(4)}${ANSI_RESET}"
             print("$num|")
         }
         println("\n+----+----+----+----+")
     }
     //print win message
-    if (grid.any { it.contains(2048) }) println("good job you did it")
-
+    if (this.any { it.contains(2048) }) println("good job you did it")
 }
 
 //<editor-fold desc="Updating the grid">
