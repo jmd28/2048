@@ -153,15 +153,13 @@ fun Grid.print(score: Int) {
     println("Score: $score")
     println("High-score: $highScore")
     //draw board
-    println("+----+----+----+----+")
-    this.forEach { row ->
-        print("|")
-        row.forEach {
-            val num = "${colours(it)}${(if (it == 0) "" else it.toString()).padStart(4)}${ANSI_RESET}"
-            print("$num|")
+    val rowDivider = "+----+----+----+----+"
+    val str = this.joinToString("\n$rowDivider\n", "$rowDivider\n", "\n$rowDivider") { row ->
+        row.joinToString("|", "|", "|") {
+            "${colours(it)}${(if (it == 0) "" else it.toString()).padStart(4)}${ANSI_RESET}"
         }
-        println("\n+----+----+----+----+")
     }
+    println(str)
     //print win message
     if (this.any { it.contains(2048) }) println("good job you did it")
 }
